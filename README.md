@@ -21,14 +21,19 @@ All definitions and theorems live under the `Sinsemilla` namespace. Built on top
 | Coefficient mapping chi | `Sinsemilla/Properties.lean` | `chi(m, j) = sum of 2^(n-1-i) * delta(m_i, j)` |
 | chi bound | `Sinsemilla/Properties.lean` | `chi(m, j) < 2^|m|` — proven by induction |
 | **chi injectivity** | `Sinsemilla/Properties.lean` | Distinct equal-length chunk sequences produce distinct coefficient vectors |
+| sumChunks | `Sinsemilla/Properties.lean` | Weighted sum of chunk generators `Σᵢ 2^(n-1-i)·S(mᵢ)` |
 | hashToPoint definedness | `Sinsemilla/Properties.lean` | Non-none hash implies existence of a point |
+| step double-and-add | `Sinsemilla/Properties.lean` | `step(P, mᵢ) = [2]·P + S(mᵢ)` when step succeeds |
+| foldl unrolling | `Sinsemilla/Properties.lean` | `foldl step P chunks = [2^n]·P + sumChunks(chunks)` when it succeeds |
+| **Pedersen equivalence** | `Sinsemilla/Properties.lean` | `hashToPoint(D, M) = [2^n]·Q(D) + sumChunks(pad M)` — full Pedersen vector hash equivalence |
+| **Collision → equal sums** | `Sinsemilla/Properties.lean` | Hash collision implies equal Pedersen generator sums; with distinct pads this yields a DLP relation |
 
 ## Security argument
 
 Sinsemilla's collision resistance reduces to the discrete logarithm problem on Pallas:
 
 1. **chi injectivity** (proven): the coefficient mapping from chunk sequences to column-sum vectors is injective, so distinct messages produce distinct Pedersen hash inputs.
-2. **Pedersen equivalence** (documented): when no exceptional case occurs, the hash equals a Pedersen vector commitment whose collision resistance reduces to DLP.
+2. **Pedersen equivalence** (proven): when no exceptional case occurs, `hashToPoint(D, M) = [2^n]·Q(D) + sumChunks(pad M)`, a Pedersen vector hash whose collision resistance reduces to DLP.
 3. **Exceptional case security** (documented): if the hash ever returns `none`, one can efficiently extract a discrete log relation among the generators.
 
 See section 5.4.1.9 of the [Zcash protocol specification](https://zips.z.cash/protocol/protocol.pdf).

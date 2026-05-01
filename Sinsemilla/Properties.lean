@@ -118,12 +118,23 @@ theorem chi_injective (m₁ m₂ : List (Fin 1024))
 
 When `SinsemillaHashToPoint(D, M) ≠ ⊥`, the result equals:
 
-  `[2ⁿ] · Q(D) + Σⱼ₌₀¹⁰²³ [χ(m)ⱼ₊₁] · S(j)`
+  `[2ⁿ] · Q(D) + Σᵢ [2^(n-1-i)] · S(mᵢ)`
 
 This is a Pedersen vector hash, whose collision resistance reduces to
 the hardness of finding discrete log relations among the generators.
-
 -/
+
+/-- Weighted sum of chunk generators: `Σᵢ 2^(n-1-i) · S(mᵢ)`. -/
+def sumChunks : List (Fin 1024) → Pallas.toAffine.Point
+  | [] => 0
+  | m :: rest => 2 ^ rest.length • S m + sumChunks rest
+
+@[simp]
+theorem sumChunks_nil : sumChunks [] = 0 := rfl
+
+@[simp]
+theorem sumChunks_cons (m : Fin 1024) (rest : List (Fin 1024)) :
+    sumChunks (m :: rest) = 2 ^ rest.length • S m + sumChunks rest := rfl
 
 /-- When no exceptional case occurs, `SinsemillaHashToPoint` produces a
 definite point — a prerequisite for the Pedersen equivalence. -/
@@ -153,12 +164,79 @@ theorem step_eq_double_add {P : Pallas.toAffine.Point} {mᵢ : Fin 1024}
     have hR : R = M + P := incompleteAdd_some_some_eq h
     rw [hR, hM, two_nsmul]; abel
 
+/-- Accumulator step on `none` produces `none`. -/
+@[simp]
+theorem step_none (m : Fin 1024) : step none m = none := by
+  unfold step; simp [incompleteAdd]
+
+/-- `foldl step` propagates `none` through the entire chunk list. -/
+theorem foldl_step_none (chunks : List (Fin 1024)) :
+    chunks.foldl step none = none := by
+  induction chunks with
+  | nil => rfl
+  | cons m rest ih => simp [List.foldl, ih]
+
+/-- Unrolling the accumulator: when `foldl step` succeeds on a list of chunks,
+the result equals `[2^n]·P + sumChunks(chunks)`.
+
+This is the key lemma connecting the iterative accumulator to the
+closed-form Pedersen vector hash. -/
+theorem foldl_step_pedersen (chunks : List (Fin 1024))
+    (P R : Pallas.toAffine.Point)
+    (h : chunks.foldl step (some P) = some R) :
+    R = 2 ^ chunks.length • P + sumChunks chunks := by
+  induction chunks generalizing P R with
+  | nil =>
+    simp [List.foldl] at h
+    subst h; simp [sumChunks]
+  | cons m rest ih =>
+    simp only [List.foldl] at h
+    cases hstep : step (some P) m with
+    | none => rw [hstep, foldl_step_none] at h; simp at h
+    | some Q =>
+      rw [hstep] at h
+      have hQ := step_eq_double_add hstep
+      have hR := ih Q R h
+      rw [hR, hQ]
+      simp only [List.length_cons, sumChunks_cons]
+      have hdist := smul_add (2 ^ rest.length) (2 • P) (S m)
+      rw [hdist, ← mul_nsmul', ← pow_succ]
+      abel
+
+/-- **Pedersen equivalence**: when `SinsemillaHashToPoint(D, M)` succeeds,
+the result equals `[2^n]·Q(D) + sumChunks(pad M)`, a Pedersen vector hash
+whose collision resistance reduces to the discrete logarithm problem. -/
+theorem hashToPoint_pedersen (D : List UInt8) (M : List Bool)
+    (R : Pallas.toAffine.Point)
+    (h : hashToPoint D M = some R) :
+    R = 2 ^ (pad M).length • Q D + sumChunks (pad M) := by
+  unfold hashToPoint at h
+  split at h
+  · simp at h
+  · exact foldl_step_pedersen (pad M) (Q D) R h
+
 /-! ## Collision resistance
 
 For a fixed domain separator `D` and fixed input length, finding two distinct
 messages `M ≠ M'` such that `SinsemillaHash(D, M) = SinsemillaHash(D, M') ≠ ⊥`
 yields a nontrivial discrete log relation among `Q(D), S(0), ..., S(1023)`.
 -/
+
+/-- A hash collision for messages with equally-padded lengths implies the
+Pedersen generator sums are equal.
+
+If the padded chunks differ (`pad M₁ ≠ pad M₂`), this gives a nontrivial
+linear relation among `S(0), ..., S(1023)`, breaking DLP. -/
+theorem collision_implies_sumChunks_eq (D : List UInt8) (M₁ M₂ : List Bool)
+    (R : Pallas.toAffine.Point)
+    (h₁ : hashToPoint D M₁ = some R)
+    (h₂ : hashToPoint D M₂ = some R)
+    (hlen : (pad M₁).length = (pad M₂).length) :
+    sumChunks (pad M₁) = sumChunks (pad M₂) := by
+  have p₁ := hashToPoint_pedersen D M₁ R h₁
+  have p₂ := hashToPoint_pedersen D M₂ R h₂
+  rw [hlen] at p₁
+  exact add_left_cancel (p₁.symm.trans p₂)
 
 /-! ## Exceptional case security
 
