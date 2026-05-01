@@ -123,8 +123,6 @@ When `SinsemillaHashToPoint(D, M) ≠ ⊥`, the result equals:
 This is a Pedersen vector hash, whose collision resistance reduces to
 the hardness of finding discrete log relations among the generators.
 
-The full formal statement requires scalar multiplication on Pallas points,
-which is left to future work.
 -/
 
 /-- When no exceptional case occurs, `SinsemillaHashToPoint` produces a
@@ -136,6 +134,24 @@ theorem hashToPoint_some_of_ne_none (D : List UInt8) (M : List Bool)
   cases h : hashToPoint D M with
   | none => exact absurd h hne
   | some P => exact ⟨P, rfl⟩
+
+/-- The Sinsemilla accumulator step computes double-and-add when it succeeds:
+`step(P, mᵢ) = [2]·P + S(mᵢ)`.
+
+This is the per-step Pedersen equivalence: each accumulator step is a
+doubling of the current accumulator plus the chunk generator. -/
+theorem step_eq_double_add {P : Pallas.toAffine.Point} {mᵢ : Fin 1024}
+    {R : Pallas.toAffine.Point}
+    (h : step (some P) mᵢ = some R) :
+    R = 2 • P + S mᵢ := by
+  unfold step at h
+  cases hmid : incompleteAdd (some P) (some (S mᵢ)) with
+  | none => rw [hmid] at h; simp at h
+  | some M =>
+    rw [hmid] at h
+    have hM : M = P + S mᵢ := incompleteAdd_some_some_eq hmid
+    have hR : R = M + P := incompleteAdd_some_some_eq h
+    rw [hR, hM, two_nsmul]; abel
 
 /-! ## Collision resistance
 

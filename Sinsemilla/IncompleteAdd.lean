@@ -66,6 +66,22 @@ theorem incompleteAdd_none_right (P : Option Pallas.toAffine.Point) :
     | zero => rfl
     | some x y h => rfl
 
+/-- When incomplete addition of two definite points succeeds,
+it equals standard elliptic curve addition. -/
+theorem incompleteAdd_some_some_eq {P Q R : Pallas.toAffine.Point}
+    (h : incompleteAdd (some P) (some Q) = some R) :
+    R = P + Q := by
+  cases P with
+  | zero => simp [incompleteAdd] at h
+  | some x₁ y₁ h₁ =>
+    cases Q with
+    | zero => simp [incompleteAdd] at h
+    | some x₂ y₂ h₂ =>
+      simp only [incompleteAdd] at h
+      split at h
+      · contradiction
+      · simp at h; exact h.symm
+
 end
 
 end Sinsemilla
