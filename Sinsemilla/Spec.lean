@@ -96,7 +96,10 @@ Computes `SinsemillaHashToPoint(D ‖ "-M", M) + [r] · R` where
 `R = GroupHash(D ‖ "-r", "")` is a randomness base point. -/
 def commit (r : Pasta.Fq) (D : List UInt8) (M : List Bool) :
     Option Pallas.toAffine.Point :=
-  sorry
+  let hashPart := hashToPoint (D ++ "-M".toUTF8.toList) M
+  let R := groupHash (D ++ "-r".toUTF8.toList) []
+  let blindPart := r.val • R
+  hashPart.map (· + blindPart)
 
 /-- `SinsemillaShortCommit_r(D, M)`: commitment with x-coordinate extraction. -/
 def shortCommit (r : Pasta.Fq) (D : List UInt8) (M : List Bool) :
