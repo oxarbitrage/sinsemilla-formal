@@ -1,6 +1,6 @@
 # sinsemilla-formal
 
-Lean 4 formalization of the [Sinsemilla](https://zcash.github.io/orchard/design/commitments/sinsemilla.html) hash function used in Zcash's [Orchard](https://zcash.github.io/orchard/) protocol.
+Lean 4 formalization of the [Sinsemilla](https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash) hash function used in Zcash's [Orchard](https://zcash.github.io/orchard/) protocol.
 
 **Status: fully proven — zero `sorry`.**
 
@@ -28,6 +28,10 @@ All definitions and theorems live under the `Sinsemilla` namespace. Built on top
 | **Pedersen equivalence** | `Sinsemilla/Properties.lean` | `hashToPoint(D, M) = [2^n]·Q(D) + sumChunks(pad M)` — full Pedersen vector hash equivalence |
 | **Collision → equal sums** | `Sinsemilla/Properties.lean` | Hash collision implies equal Pedersen generator sums; with distinct pads this yields a DLP relation |
 
+### Scope
+
+This formalization covers the **protocol-level** Sinsemilla specification ([§5.4.1.9](https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash)): the abstract hash-to-point, hash, commit, and short-commit operations. The [Halo 2 circuit gadget](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html) implements Sinsemilla with additional optimizations (running sum decomposition, `Y = 2y` coordinate, lookup tables, selector logic) that are not part of this formalization — those belong in [halo2-formal](https://github.com/oxarbitrage/halo2-formal).
+
 ## Security argument
 
 Sinsemilla's collision resistance reduces to the discrete logarithm problem on Pallas:
@@ -36,7 +40,7 @@ Sinsemilla's collision resistance reduces to the discrete logarithm problem on P
 2. **Pedersen equivalence** (proven): when no exceptional case occurs, `hashToPoint(D, M) = [2^n]·Q(D) + sumChunks(pad M)`, a Pedersen vector hash whose collision resistance reduces to DLP.
 3. **Exceptional case security** (documented): if the hash ever returns `none`, one can efficiently extract a discrete log relation among the generators.
 
-See section 5.4.1.9 of the [Zcash protocol specification](https://zips.z.cash/protocol/protocol.pdf).
+See [§5.4.1.9 of the Zcash protocol specification](https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash).
 
 ## Building
 
@@ -55,7 +59,7 @@ lake build     # builds in ~10 seconds after cache download
 
 ## References
 
-- [Sinsemilla design](https://zcash.github.io/orchard/design/commitments/sinsemilla.html) — hash function design rationale
-- [Zcash protocol specification, section 5.4.1.9](https://zips.z.cash/protocol/protocol.pdf) — formal specification
+- [Zcash Protocol Specification §5.4.1.9](https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash) — Sinsemilla specification
+- [Halo 2 Sinsemilla gadget](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html) — circuit-level design with optimizations
 - [zcash/orchard](https://github.com/zcash/orchard) — Rust implementation
 - [pasta-formal](https://github.com/oxarbitrage/pasta-formal) — Pallas/Vesta Lean 4 formalization
